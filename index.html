@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acompanhamento I.A.</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f5f5f0;color:#1a1a1a;padding:1rem}
+.header{margin-bottom:1.5rem}
+.header h1{font-size:20px;font-weight:500}
+.header p{font-size:13px;color:#888;margin-top:2px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid #e0e0d8;margin-bottom:1.5rem;flex-wrap:wrap}
+.tab{padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer;border:none;background:none;color:#888;border-bottom:2px solid transparent}
+.tab.active{color:#1a1a1a;border-bottom:2px solid #3266ad}
+.section{display:none}.section.active{display:block}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.5rem}
+.kpi{background:#efefea;border-radius:8px;padding:1rem;text-align:center}
+.kpi .val{font-size:26px;font-weight:500}
+.kpi .lbl{font-size:12px;color:#888;margin-top:4px}
+.verde{color:#3B6D11}.vermelho{color:#A32D2D}.laranja{color:#854F0B}.azul{color:#185FA5}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem}
+@media(max-width:600px){.chart-row{grid-template-columns:1fr}}
+.chart-box{background:#fff;border:0.5px solid #ddddd5;border-radius:12px;padding:1rem}
+.chart-title{font-size:13px;font-weight:500;color:#888;margin-bottom:12px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;font-size:11px;color:#888}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend b{width:10px;height:10px;border-radius:2px;display:inline-block}
+.table-wrap{overflow-x:auto}
+table{width:100%;font-size:13px;border-collapse:collapse}
+th{text-align:left;padding:8px 10px;font-size:12px;font-weight:500;color:#888;border-bottom:1px solid #e0e0d8}
+td{padding:7px 10px;border-bottom:0.5px solid #e8e8e0;color:#1a1a1a}
+tr:hover td{background:#f8f8f3}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.b-sim{background:#EAF3DE;color:#3B6D11}
+.b-nao{background:#FCEBEB;color:#A32D2D}
+.b-auto{background:#E6F1FB;color:#185FA5}
+.b-pend{background:#FAEEDA;color:#854F0B}
+.b-cancel{background:#F1EFE8;color:#5F5E5A}
+.b-motivo{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap}
+.filter-row{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.filter-row label{font-size:13px;color:#888}
+select,input[type=text]{font-size:13px;padding:4px 8px;border:0.5px solid #ddd;border-radius:6px;background:#fff;color:#1a1a1a}
+.desc-cell{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;font-size:12px;color:#888}
+.desc-cell.expanded{white-space:normal}
+.op-card{background:#fff;border:0.5px solid #ddddd5;border-radius:8px;padding:12px}
+.op-label{font-size:11px;color:#888;margin-bottom:6px}
+.op-bar{height:6px;border-radius:3px;background:#efefea;margin-bottom:4px}
+.op-fill{height:6px;border-radius:3px}
+.info-bar{font-size:12px;color:#888;margin-bottom:8px}
+.motivo-select{width:100%;font-size:12px;padding:3px 6px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Acompanhamento I.A.</h1>
+  <p>290 condomínios &nbsp;|&nbsp; Junho 2026</p>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('cadastros',this)">Cadastros</button>
+  <button class="tab" onclick="switchTab('pendencias',this)">Pendências I.A.</button>
+  <button class="tab" onclick="switchTab('naoativar',this)">Não Ativar (25)</button>
+  <button class="tab" onclick="switchTab('operador',this)">Operador x Portão</button>
+</div>
+
+<!-- CADASTROS -->
+<div id="cadastros" class="section active">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="val">290</div><div class="lbl">Total condomínios</div></div>
+    <div class="kpi"><div class="val verde">180</div><div class="lbl">Configurados (SIM)</div></div>
+    <div class="kpi"><div class="val azul">59</div><div class="lbl">Autônomos</div></div>
+    <div class="kpi"><div class="val vermelho">21</div><div class="lbl">Não configurados</div></div>
+    <div class="kpi"><div class="val laranja">25</div><div class="lbl">Não ativar</div></div>
+    <div class="kpi"><div class="val">1</div><div class="lbl">Cancelados</div></div>
+  </div>
+  <div class="chart-row">
+    <div class="chart-box">
+      <div class="chart-title">Condomínios por filial</div>
+      <div style="position:relative;height:200px"><canvas id="chartFilial"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Status de configuração</div>
+      <div class="legend">
+        <span><b style="background:#3B6D11"></b>SIM (180)</span>
+        <span><b style="background:#185FA5"></b>Autônomo (59)</span>
+        <span><b style="background:#854F0B"></b>N. ativar (25)</span>
+        <span><b style="background:#A32D2D"></b>NÃO (21)</span>
+        <span><b style="background:#5F5E5A"></b>Cancelado (1)</span>
+      </div>
+      <div style="position:relative;height:170px"><canvas id="chartConfig"></canvas></div>
+    </div>
+  </div>
+  <div class="filter-row">
+    <label>Buscar:</label>
+    <input type="text" id="searchBox" style="min-width:180px" placeholder="Nome do condomínio..." oninput="renderTable()">
+    <label>Filial:</label>
+    <select id="filtFilial" onchange="renderTable()">
+      <option value="">Todas</option>
+      <option>CEARA</option><option>SECOPI</option><option>MANAUS</option><option>MARANHÃO</option>
+    </select>
+    <label>Config:</label>
+    <select id="filtConfig" onchange="renderTable()">
+      <option value="">Todos</option>
+      <option>SIM</option><option>AUTONOMO</option><option>NÃO</option><option>NAO ATIVAR</option><option>CANCELADO</option>
+    </select>
+    <label>Regras:</label>
+    <select id="filtRegras" onchange="renderTable()">
+      <option value="">Todas</option>
+      <option>concluido</option><option>pendente</option><option>AUTONOMO</option>
+    </select>
+  </div>
+  <div id="countInfo" class="info-bar"></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Filial</th><th>Condomínio</th><th>Config.</th><th>Regras</th><th>Restrição</th></tr></thead>
+      <tbody id="tabBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PENDENCIAS -->
+<div id="pendencias" class="section">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="val vermelho">8</div><div class="lbl">Total pendências</div></div>
+    <div class="kpi"><div class="val">3</div><div class="lbl">Falta de contato</div></div>
+    <div class="kpi"><div class="val">2</div><div class="lbl">Falta de script</div></div>
+    <div class="kpi"><div class="val">2</div><div class="lbl">Reg. divergente</div></div>
+    <div class="kpi"><div class="val">1</div><div class="lbl">Postura</div></div>
+  </div>
+  <div class="chart-row">
+    <div class="chart-box">
+      <div class="chart-title">Pendências por motivo</div>
+      <div style="position:relative;height:200px"><canvas id="chartMotivo"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Timeline (mai–jun 2026)</div>
+      <div style="position:relative;height:200px"><canvas id="chartTimeline"></canvas></div>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Data</th><th>Condomínio</th><th>Motivo</th><th>Resumo</th><th>Resolução</th></tr></thead>
+      <tbody>
+        <tr><td>16/05/2026</td><td>Cond. Ana Karine</td><td><span class="b-motivo" style="background:#FCEBEB;color:#A32D2D">Registro divergente</span></td><td class="desc-cell" onclick="this.classList.toggle('expanded')">I.A. ligou, morador atendeu e autorizou, mas sistema registrou como sem contato.</td><td><span class="badge b-cancel">Em aberto</span></td></tr>
+        <tr><td>09/06/2026</td><td>Cond. Lumma</td><td><span class="b-motivo" style="background:#FCEBEB;color:#A32D2D">Falta de contato</span></td><td class="desc-cell" onclick="this.classList.toggle('expanded')">I.A. não realizou tentativas de contato. Finalizou como "sucesso" sem agir.</td><td><span class="badge b-cancel">Em aberto</span></td></tr>
+        <tr><td>10/06/2026</td><td>Cond. Lumma</td><td><span class="b-motivo" style="background:#FAEEDA;color:#854F0B">Falta de script</span></td><td class="desc-cell" onclick="this.classList.toggle('expanded')">Sem dados de moradores na tela. Sem opção de interfonar.</td><td><span class="badge b-cancel">Em aberto</span></td></tr>
+        <tr><td>10/06/2026</td><td>Cond. Montreal (MA)</td><td><span class="b-motivo" style="background:#FAEEDA;color:#854F0B">Falta de script</span></td><td class="desc-cell" onclick="this.classList.toggle('expanded')">Sem opção de visitante/prestador. Não é possível registrar nome.</td><td><span class="badge b-cancel">Em aberto</span></td></tr>
+        <tr><td>11/06/2026</td><td>Real Park</td><td><span class="b-motivo" style="background:#FCEBEB;color:#A32D2D">Falta de contato</span></td><td class="desc-cell" onclick="this.classList.toggle('expanded')">Moradora informou que ninguém manteve contato com ela.</td><td><span class="badge b-cancel">Em aberto</span></td></tr>
+        <tr><td>15/06/2026</td><td>Nadja Aguiar</td><td><span class="b-motivo" style="background:#FCEBEB;color:#A32D2D">Falta de contato</span></td><td class="desc-cell" onclick="this.classList.toggle('expanded')">AP801: I.A. disse que morador estava descendo, mas morador ligou perguntando por que havia sido chamado.</td><td><span class="badge b-cancel">Em aberto</span></td></tr>
+        <tr><td>15/06/2026</td><td>Cond. Mandacarus (CE)</td><td><span class="b-motivo" style="background:#FCEBEB;color:#A32D2D">Registro divergente</span></td><td class="desc-cell" onclick="this.classList.toggle('expanded')">I.A. trocou apartamento 301 pelo 007.</td><td><span class="badge b-cancel">Em aberto</span></td></tr>
+        <tr><td>16/06/2026</td><td>Granlara</td><td><span class="b-motivo" style="background:#E6F1FB;color:#185FA5">Postura no atendimento</span></td><td class="desc-cell" onclick="this.classList.toggle('expanded')">Unidade 27A: reclamação da Sra. Karolayne sobre linguagem inadequada da I.A.</td><td><span class="badge b-cancel">Em aberto</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:12px;color:#888;margin-top:8px">Clique no resumo para expandir.</p>
+</div>
+
+<!-- NAO ATIVAR -->
+<div id="naoativar" class="section">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="val laranja">25</div><div class="lbl">Total não ativar</div></div>
+    <div class="kpi"><div class="val" id="kpiSindico">0</div><div class="lbl">Síndico não quer I.A.</div></div>
+    <div class="kpi"><div class="val" id="kpiApp">0</div><div class="lbl">Autorização pelo app</div></div>
+    <div class="kpi"><div class="val" id="kpiCritico">0</div><div class="lbl">Condomínio crítico</div></div>
+    <div class="kpi"><div class="val" id="kpiSem">25</div><div class="lbl">Sem motivo</div></div>
+  </div>
+  <div class="chart-box" style="margin-bottom:1.5rem">
+    <div class="chart-title">Distribuição por motivo</div>
+    <div class="legend">
+      <span><b style="background:#854F0B"></b>Síndico não quer I.A.</span>
+      <span><b style="background:#185FA5"></b>Autorização pelo app</span>
+      <span><b style="background:#A32D2D"></b>Condomínio crítico</span>
+      <span><b style="background:#ccc"></b>Sem motivo</span>
+    </div>
+    <div style="position:relative;height:180px"><canvas id="chartNA"></canvas></div>
+  </div>
+  <div style="font-size:13px;color:#888;margin-bottom:10px">Selecione o motivo de cada condomínio. As escolhas ficam salvas automaticamente.</div>
+  <div class="filter-row">
+    <label>Filial:</label>
+    <select id="filtNAFilial" onchange="renderNA()">
+      <option value="">Todas</option>
+      <option>CEARA</option><option>SECOPI</option><option>MANAUS</option><option>MARANHÃO</option>
+    </select>
+    <label>Motivo:</label>
+    <select id="filtNAMotivo" onchange="renderNA()">
+      <option value="">Todos</option>
+      <option value="sindico">Síndico não quer I.A.</option>
+      <option value="app">Autorização pelo app</option>
+      <option value="critico">Condomínio crítico</option>
+      <option value="sem">Sem motivo</option>
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Filial</th><th>Condomínio</th><th style="min-width:220px">Motivo</th></tr></thead>
+      <tbody id="tabNA"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- OPERADOR -->
+<div id="operador" class="section">
+  <p style="font-size:13px;color:#888;margin-bottom:1rem">% de condomínios onde o operador precisa abrir o portão ou retornar ao interfone, por tipo de visitante.</p>
+  <div id="opGrid"></div>
+  <div class="chart-box" style="margin-top:1rem">
+    <div class="chart-title">Comparativo geral — intervenção do operador</div>
+    <div class="legend">
+      <span><b style="background:#A32D2D"></b>Precisa intervir (SIM)</span>
+      <span><b style="background:#3B6D11"></b>Autônomo (NÃO)</span>
+    </div>
+    <div style="position:relative;height:320px"><canvas id="chartOp"></canvas></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+var CADS=[{"filial":"CEARA","cond":"MIGUEL MACHADO","config":"SIM","regras":"concluido","restricao":"concluido"},{"filial":"CEARA","cond":"MIRON DIAS","config":"CANCELADO","regras":"concluido","restricao":"concluido"},{"filial":"CEARA","cond":"CANAA","config":"SIM","regras":"concluido","restricao":"concluido"},{"filial":"MARANHÃO","cond":"CIDADE DE LONDRES","config":"NAO ATIVAR","regras":"concluido","restricao":"concluido"},{"filial":"MARANHÃO","cond":"RENATA","config":"SIM","regras":"concluido","restricao":"concluido"},{"filial":"CEARA","cond":"PAGANINI","config":"SIM","regras":"concluido","restricao":"concluido"},{"filial":"CEARA","cond":"COIMBRA","config":"SIM","regras":"concluido","restricao":"concluido"},{"filial":"","cond":"BENE VI","config":"","regras":"concluido","restricao":"concluido"},{"filial":"MARANHÃO","cond":"VILLAGIO JARDINS 4 (MA)","config":"SIM","regras":"concluido","restricao":"concluido"},{"filial":"CEARA","cond":"QUEBEC RESIDENCE","config":"SIM","regras":"concluido","restricao":"concluido"},{"filial":"CEARA","cond":"COND. TURMALINA","config":"SIM","regras":"concluido","restricao":"concluido"},{"filial":"CEARA","cond":"COND. MANDACARUS","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"COND.SUNVILLE","config":"","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"COND SATURNO","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"COND LUMMA","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"4830 - COND. VILLAGIO JARDINS 1 (MA)","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. AGENDA RESIDENCE 2 (PI)","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"MAGNA VILLARIS 1","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CRUZEIRO DO SUL","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"COND. ALGARVE (CE)","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"COND. PORTAL DA LAGOA","config":"","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"FLOR DE LIZ","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"MARSOL","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"SAN JULIANO","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"VILLA PARADISO","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"AVALON","config":"","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"2210 - COND. VILLAGE DEL MONTE III (CE)  ATIVADO I.A","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"4710 - COND. LEODEGARIO PINHO (CE)","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"PANORAMA","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"PATRAO CE","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"TRACOA MARANHAO","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"COSTA DO SAUIPE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"RESERVA NATURA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"6060 - COND. MONTVERNON (CE)","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CASCAIS DUNAS VILLAGE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"LIRIDA MATOS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"NATERCIA RIOS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"REAL PARK","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"MONTSERRAT","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"MARQUES SANTIAGO","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"MARANATA II","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO COPENHAGUE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"PORTAL DE LION","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"PLAZA VERONNESE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO AÇORES","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"JARDIM BOTANICO II","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"RESIDENCIAL AIRTON BEZERRA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO BAYSIDE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"SAN MICHAEL","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"VITORIA PARK","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO ANDROS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO SAN MAGNUM","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"GOMES 2","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"SOLAR DOS VENTOS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"RESIDENCIAL ATHENAS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"GENTIL CARDOSO LINHARES","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"RAUL FONTENELLE DOUBLE SPACE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO RESIDENCIAL BENE VI","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"PALAIS ROYAL","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"ALIPIO BASTOS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO LILIAN","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"HARMONY RESIDENCES","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"MORADA DAS GAIVOTAS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"RESIDENCIAL LINHARES","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO ARUÃ","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"GUILHERME ROCHA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO DAS AMERICAS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"LAJE DE PEDRA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"ARMANDO SABOYA FILHO","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"ALDEIA DOS VENTOS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO JOSE VILAR","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO DOS ANJOS CORREIA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"PORTAL DO PASSARÉ","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"LEONARDO DA VINCI","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"COMODORO","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"ANA KARINE","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"COND. ERS EVELINE RAQUEL SARA (MA)","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"ILHA DO SOL","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"CONDOMINIO DO EDIFICIO ANGELICA","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"CONDOMINIO MONTE RAINIER","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"CONDOMINIO RESIDENCIAL JAQUEIRAS 2","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"CONDOMINIO DO EDIFICIO MONTREAL RESIDENCE","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"CONDOMINIUM MAGISTRAL PARK CONDOMINIUM","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"CONDOMINIO VILLAGIO JARDINS 3","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"COND. LONDON","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL ECOLIFE MINDU.","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO DO EDIFICIO MEDITERRANEE","config":"NÃO","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMÍNIO EDIFICIO JOÃO PAULO II","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO CONJUNTO RESIDENCIAL JARDIM VIA VENETO","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL SAND LANE","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL GREEN VILLE","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL GIARDINO DI MILANO","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL MANAUARA III","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"MANAUS","cond":"Cond. Residencial Brasilia 1","config":"NÃO","regras":"pendente","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL MORADAS DO PARQUE","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL RIVIERA FRANCESA","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL PARQUE DOS RIOS I","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMÍNIO BOSQUE RESIDENCIAL MURICI","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO LE BOULEVARD","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL POR DO SOL","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"MANAUS","cond":"CONDOMÍNIO DOS CONJ. JARDINS ORQUIDEA E UIRAPURU","config":"NÃO","regras":"pendente","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL OCEAN PARK","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMÍNIO RECANTO DAS LARANJEIRAS","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO SMART LARANJEIRAS","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMÍNIO LIVERPOOL","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL ASTURIAS","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL TOPAZIO","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO CARLOS DRUMMOND DE ANDRADE","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL JULIANA III - 2 ETAPA","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO JARDIM VILA RICA","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAS KARINE BARRA DE OLIVEIRA","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"COND. TARUMA (AM)","config":"SIM","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"COND. PALACIOS DAS ARTES (AM)","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO LE BETULLE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO VISCONDE DE MAUA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMÍNIO GRAND QUARTIER","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO LEBLON","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"CONDOMÍNIO GREEN VISION","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO MARAPONGA RESIDENCE CLUB","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO MARECHAL RONDON","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO GENESIS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"RESIDENCIAL VILAGGIO MONTE LIBANO","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"RESIDENCIAL JARDIM AMERICA","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"ECOMAX INDUSTRIA E COMERCIO DE PRODUTOS PLASTICOS LTDA","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"EDIFICIO CELSINA","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO MARINO BEACH RESIDENCE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO LUANA RESIDENCE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO PAUL RICHARD","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMÍNIO SOCORRO VILLAGE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"MARIA ESTHER LOCACOES, PARTICIPACOES E SERVICOS LTDA","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO VIA LUMINI","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO RESIDENCIAL VILA VERANA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO DO EDIFICIO ELIANE","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO RESIDENCIAL 3 ESTRELAS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"TV SOBRAL LTDA","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"PORTO GUILHERME EMPREENDIMENTOS E PARTICIPACOES LTDA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO JOSE MARIA CARDOSO","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO GRAHAM HILL","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"RESIDENCIAL OASI FELICE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO LILIAN LEYNE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO PARANOA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO MAGNA VILLARIS II","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMÍNIO RESIDENCIAL SAN GERARDO","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CARMEHIL - COMERCIAL ELETRICA LTDA","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"EDIFICIO MAROQUINHA REBELO","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO CONCORD I","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"COND. AMILCA ARAUJO\nSG GESTAO E ADMINISTRACAO DE IMOVEIS LTDA","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO LISBOA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO RESIDENCIAL GRAND CLASSIC","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO NAPOLI CITY I","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO RESIDENCIAL SABLES BLANC","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO APART HOTEL FLAT RESIDENCIAL DUNNAS XXI","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO PONTE","config":"NÃO","regras":"pendente","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO PRIMAVERA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO PARMA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO SOBERANO III","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO BRISAS DO EUSEBIO","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO LUXOR RESIDENCE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO RESIDENCIAS DE ASSIS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO MANUEL ISAAC PONTES","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"BELECO AGROINDUSTRIA COMERCIO E TRANSPORTES LTDA","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO PORTA ROMANA RESIDENCE","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"LINK LOGISTICS TRANSPORTES LTDA","config":"NÃO","regras":"pendente","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO SUN VILLE","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"SAND BEACH INDUSTRIA DE CONFECCOES LTDA MARESIA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMÍNIO EDIFÍCIO EMANUELA","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO RESIDENCIAL RIVIERA DI CAPRI","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO VILLA DI FIORI","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO TM RESIDENCIAL 02","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EUSEBIO PARK","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"RESIDENCIAL FUNCHAL","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"HELBOR RESERVA DA PRACA","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO TICIANA MENDES","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO PETIT TRIANON","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO RESIDENCIAL FLORENCA","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO MONTREAL","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO NADJA AGUIAR","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO RESIDENCIAL UIRAPURU","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO MORADA BRISA DO MAR","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO STILO","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO VILLA SOLARIUM","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO PORTAL DE SERRAMBI","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO MADRI","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"GRANLARA RESIDENCE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO DO EDIFICIO PORTO SEGURO","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"RIVIERA BEACH PLACE GOLF RESIDENCE","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"RESIDENCIAL NOSSA SENHORA DE GUADALUPE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO AREZZO","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO MAISON NOVA METROPOLE","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO COSTA AZUL","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO VILLAGE ST MARCOS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO SUNVILLE RESIDENCE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO BELLE VILLE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO SARGITARIUS","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO BIENE","config":"SIM","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"COND. EPIFANIO","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"HD TROPICAL","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"MARANHÃO","cond":"COND ST STEVAN","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"COND. VILLAGIO JARDINS 2","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"COND. VILLAGE DA ILHA","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"COND. ST JAMES","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"COND. MARILIA 2","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"COND. MARILIA 1","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"COND. QUINTA DA BOA VISTA","config":"SIM","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"COND. VILLAGE ALCANTARA","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"SECOPI","cond":"COND. MOINHO DOS VENTOS","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. NOE FORTES","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"SECOPI","cond":"COND. DAVID CARVALHO","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. RIO PRATA","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. RESIDENCIAL POLO SUL","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. ANA ROSA","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. ROYAL VILLE","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. RESERVA DO SUL","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND THERTULIANO MILTON BRANDÃO","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. VILA DO CONDE","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. CAJUINA","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. RESIDENCIAL BRASILIA 2","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. SOLAR DE FATIMA","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. JARDINS DOS NOIVOS","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. JARDIM DO HORTO","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. AGENDA 1","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. KENEDY","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND SOLAR DO PARNAIBA","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. RIO DOURADO","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. RIO LIMA","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. CASA BLANCA","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND VILA RICA","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. BERLIM/LISBOA","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND.EMANOEL VELOSO","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND RESERVA DOS SABIA 1","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND HELIOPOLIS PARK","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. CANELEIRO","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. H DOBAL","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND LE VERT JARDIM","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. MILLENIUM TOWER","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. JARDIM AMERICA","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. EMPRESA BIO NATURE","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"COND. SAN SEBASTIAN","config":"SIM","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"Cond. Residencial Aconchego","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"SECOPI","cond":"Cond Morena Broder Park","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"SECOPI","cond":"Cond. Jacarandar","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"SECOPI","cond":"Condominio Noe Fortes","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"- Empresa Epifanio Jose Almeida e Silva","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"Cond. Rosa Maria","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"MANAUS","cond":"COND. SINGOLARE","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"COND. PAÇO DE MESSEJANA","config":"NÃO","regras":"pendente","restricao":""},{"filial":"SECOPI","cond":"Cond. Villa de Valega","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"Cond. Isla Verde","config":"NÃO","regras":"pendente","restricao":""},{"filial":"CEARA","cond":"Cond Jardim America","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"MANAUS","cond":"Cond. Topazio","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"Cond. Frei Vicente Salvador","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"MANAUS","cond":"Cond. Murici","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"SECOPI","cond":"Cond. Recanto Das Palmeiras","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"SECOPI","cond":"Cond. la Madeleine","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"CEARA","cond":"Empresa Fastinox","config":"AUTONOMO","regras":"AUTONOMO","restricao":""},{"filial":"MANAUS","cond":"Cond. Sol Nascente Ii","config":"NÃO","regras":"","restricao":""},{"filial":"MARANHÃO","cond":"Cond. Lyon","config":"AUTONOMO","regras":"","restricao":""},{"filial":"CEARA","cond":"Empresa tv Jangadeiro Sobral","config":"AUTONOMO","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Melbourne Place","config":"NAO ATIVAR","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Luciano Carneiro","config":"NÃO","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Joao Mesquita","config":"NAO ATIVAR","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Canto Bello","config":"NÃO","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Santana de Parnaiba","config":"NÃO","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Residencial Vila Real","config":"NÃO","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Carlos Drummond de Andrade","config":"NÃO","regras":"","restricao":""},{"filial":"MARANHÃO","cond":"Cond. Quintas do Calhau","config":"NÃO","regras":"","restricao":""},{"filial":"CEARA","cond":"Servis Eletrônica","config":"SIM","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Itaperi","config":"NÃO","regras":"","restricao":""},{"filial":"CEARA","cond":"Sindicato Dos Policiais - Prf","config":"AUTONOMO","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Edifício Villa Borghese","config":"NÃO","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Gomes i","config":"NÃO","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Villa Bellagio","config":"NÃO","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Veneza Ii","config":"NÃO","regras":"","restricao":""},{"filial":"CEARA","cond":"Empresa Fonnet Networks","config":"AUTONOMO","regras":"","restricao":""},{"filial":"CEARA","cond":"Empresa Beleco Setor Cristaias ( Aruaru Morada Nova)","config":"AUTONOMO","regras":"","restricao":""},{"filial":"SECOPI","cond":"Cond. The Office Tower","config":"AUTONOMO","regras":"","restricao":""},{"filial":"SECOPI","cond":"Cond. Monte Libano","config":"AUTONOMO","regras":"","restricao":""},{"filial":"SECOPI","cond":"Cond. Residencial Brasilia","config":"AUTONOMO","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Ebenézer","config":"AUTONOMO","regras":"","restricao":""},{"filial":"CEARA","cond":"Empresa Carmehil","config":"AUTONOMO","regras":"","restricao":""},{"filial":"CEARA","cond":"Escola Estação da Luz","config":"AUTONOMO","regras":"","restricao":""},{"filial":"MANAUS","cond":"Cond. Vida","config":"NÃO","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Ed. Antonio Fradique Accioly","config":"NAO ATIVAR","regras":"","restricao":""},{"filial":"CEARA","cond":"COND. IRACEMA RESIDENCE","config":"NAO ATIVAR","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Valencia Residence","config":"AUTONOMO","regras":"","restricao":""},{"filial":"CEARA","cond":"Empresa Carmehil (antonio Sales)","config":"AUTONOMO","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Astoria","config":"AUTONOMO","regras":"","restricao":""},{"filial":"SECOPI","cond":"Cond. Canaa (pi)","config":"AUTONOMO","regras":"","restricao":""},{"filial":"SECOPI","cond":"Empresa Extand","config":"AUTONOMO","regras":"","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL TAPAJOS","config":"NÃO","regras":"","restricao":""}];
+var NAO_ATIVAR=[{"filial":"MARANHÃO","cond":"CIDADE DE LONDRES","config":"NAO ATIVAR","regras":"concluido","restricao":"concluido"},{"filial":"CEARA","cond":"COND. MANDACARUS","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"SAN JULIANO","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"VILLA PARADISO","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"6060 - COND. MONTVERNON (CE)","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO AÇORES","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"SAN MICHAEL","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"EDIFICIO RESIDENCIAL BENE VI","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"CONDOMINIO DO EDIFICIO ANGELICA","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MARANHÃO","cond":"CONDOMINIO MONTE RAINIER","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"COND. LONDON","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMÍNIO LIVERPOOL","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL TOPAZIO","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO RESIDENCIAL JULIANA III - 2 ETAPA","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"CONDOMINIO JARDIM VILA RICA","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO PAUL RICHARD","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO DO EDIFICIO ELIANE","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO SUN VILLE","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"CONDOMINIO EDIFICIO MONTREAL","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"SECOPI","cond":"COND. ROYAL VILLE","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"MANAUS","cond":"Cond. Topazio","config":"NAO ATIVAR","regras":"concluido","restricao":""},{"filial":"CEARA","cond":"Cond. Melbourne Place","config":"NAO ATIVAR","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Joao Mesquita","config":"NAO ATIVAR","regras":"","restricao":""},{"filial":"CEARA","cond":"Cond. Ed. Antonio Fradique Accioly","config":"NAO ATIVAR","regras":"","restricao":""},{"filial":"CEARA","cond":"COND. IRACEMA RESIDENCE","config":"NAO ATIVAR","regras":"","restricao":""}];
+var STORAGE_KEY='dash_ia_motivos_v1';
+
+function loadMotivos(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){return{}}}
+function saveMotivo(cond,val){var d=loadMotivos();d[cond]=val;localStorage.setItem(STORAGE_KEY,JSON.stringify(d));updateKpisNA();renderNA();}
+
+function switchTab(id,btn){
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active')});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function bc(v){
+  if(!v)return'<span class="badge b-cancel">—</span>';
+  if(v==='SIM')return'<span class="badge b-sim">SIM</span>';
+  if(v==='AUTONOMO')return'<span class="badge b-auto">AUTÔNOMO</span>';
+  if(v==='NÃO')return'<span class="badge b-nao">NÃO</span>';
+  if(v==='NAO ATIVAR')return'<span class="badge b-pend">N. ATIVAR</span>';
+  if(v==='CANCELADO')return'<span class="badge b-cancel">CANCELADO</span>';
+  return'<span class="badge b-cancel">'+v+'</span>';
+}
+function br(v){
+  if(!v)return'<span class="badge b-cancel">—</span>';
+  if(v==='concluido')return'<span class="badge b-sim">concluído</span>';
+  if(v==='pendente')return'<span class="badge b-pend">pendente</span>';
+  if(v==='AUTONOMO')return'<span class="badge b-auto">autônomo</span>';
+  return'<span class="badge b-cancel">'+v+'</span>';
+}
+
+function renderTable(){
+  var fFil=document.getElementById('filtFilial').value;
+  var fCfg=document.getElementById('filtConfig').value;
+  var fReg=document.getElementById('filtRegras').value;
+  var fS=document.getElementById('searchBox').value.toUpperCase().trim();
+  var data=CADS.filter(function(r){
+    if(fFil&&r.filial!==fFil)return false;
+    if(fCfg&&r.config!==fCfg)return false;
+    if(fReg&&r.regras!==fReg)return false;
+    if(fS&&r.cond.toUpperCase().indexOf(fS)<0)return false;
+    return true;
+  });
+  document.getElementById('countInfo').textContent='Mostrando '+data.length+' de 290 condomínios';
+  document.getElementById('tabBody').innerHTML=data.map(function(r){
+    return'<tr><td>'+(r.filial||'—')+'</td><td style="font-weight:500">'+r.cond+'</td><td>'+bc(r.config)+'</td><td>'+br(r.regras)+'</td><td>'+(r.restricao?'<span class="badge b-sim">concluído</span>':'<span class="badge b-cancel">—</span>')+'</td></tr>';
+  }).join('');
+}
+
+function updateKpisNA(){
+  var d=loadMotivos();
+  var s=0,a=0,c=0,sem=0;
+  NAO_ATIVAR.forEach(function(r){
+    var v=d[r.cond]||'';
+    if(v==='sindico')s++;else if(v==='app')a++;else if(v==='critico')c++;else sem++;
+  });
+  document.getElementById('kpiSindico').textContent=s;
+  document.getElementById('kpiApp').textContent=a;
+  document.getElementById('kpiCritico').textContent=c;
+  document.getElementById('kpiSem').textContent=sem;
+  if(naChart){naChart.data.datasets[0].data=[s,a,c,sem];naChart.update();}
+}
+
+function renderNA(){
+  var d=loadMotivos();
+  var fFil=document.getElementById('filtNAFilial').value;
+  var fMot=document.getElementById('filtNAMotivo').value;
+  var LABELS={'sindico':'Síndico não quer I.A.','app':'Autorização pelo app','critico':'Condomínio crítico','':'— sem motivo'};
+  var data=NAO_ATIVAR.filter(function(r){
+    if(fFil&&r.filial!==fFil)return false;
+    var v=d[r.cond]||'';
+    if(fMot==='sem'&&v!=='')return false;
+    if(fMot&&fMot!=='sem'&&v!==fMot)return false;
+    return true;
+  });
+  document.getElementById('tabNA').innerHTML=data.map(function(r){
+    var v=d[r.cond]||'';
+    var esc=r.cond.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var opts=['','sindico','app','critico'].map(function(opt){
+      return'<option value="'+opt+'"'+(v===opt?' selected':'')+'>'+(opt===''?'— sem motivo':LABELS[opt])+'</option>';
+    }).join('');
+    return'<tr><td>'+(r.filial||'—')+'</td><td style="font-weight:500">'+r.cond+'</td><td><select class="motivo-select" onchange="saveMotivo(\''+esc+'\',this.value)">'+opts+'</select></td></tr>';
+  }).join('');
+}
+
+new Chart(document.getElementById('chartFilial'),{type:'bar',data:{labels:['CEARA','SECOPI','MANAUS','MARANHÃO'],datasets:[{data:[178,47,35,29],backgroundColor:['#185FA5','#3B6D11','#854F0B','#533AB7'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.06)'},ticks:{color:'#888'}},x:{ticks:{color:'#888'},grid:{display:false}}}}});
+new Chart(document.getElementById('chartConfig'),{type:'doughnut',data:{labels:['SIM','Autônomo','N. ativar','NÃO','Cancelado'],datasets:[{data:[180,59,25,21,1],backgroundColor:['#3B6D11','#185FA5','#854F0B','#A32D2D','#5F5E5A'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+new Chart(document.getElementById('chartMotivo'),{type:'bar',data:{labels:['Falta de contato','Falta de script','Reg. divergente','Postura'],datasets:[{data:[3,2,2,1],backgroundColor:['#A32D2D','#854F0B','#E24B4A','#185FA5'],borderWidth:0}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.06)'},ticks:{color:'#888',stepSize:1}},y:{ticks:{color:'#888'},grid:{display:false}}}}});
+new Chart(document.getElementById('chartTimeline'),{type:'bar',data:{labels:['Mai/26','Jun/26'],datasets:[{data:[1,7],backgroundColor:['#B5D4F4','#A32D2D'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.06)'},ticks:{color:'#888',stepSize:1}},x:{ticks:{color:'#888'},grid:{display:false}}}}});
+
+var naChart=new Chart(document.getElementById('chartNA'),{type:'doughnut',data:{labels:['Síndico não quer I.A.','Autorização pelo app','Condomínio crítico','Sem motivo'],datasets:[{data:[0,0,0,25],backgroundColor:['#854F0B','#185FA5','#A32D2D','#ccc'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+
+var opTypes=[{label:'Visita/Prestador Eclusa',sim:13,total:200},{label:'Visita/Prestador Fora Eclusa',sim:18,total:199},{label:'Delivery Eclusa',sim:13,total:199},{label:'Delivery Fora Eclusa',sim:15,total:199},{label:'Correios/Compra Fora Eclusa',sim:11,total:199},{label:'Correios Eclusa',sim:11,total:199},{label:'Água/Gás Eclusa',sim:26,total:199},{label:'Água/Gás Fora Eclusa',sim:172,total:197}];
+document.getElementById('opGrid').innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:1rem">'+opTypes.map(function(o){var pct=Math.round(o.sim/o.total*100);var color=pct>50?'#A32D2D':pct>20?'#854F0B':'#3B6D11';return'<div class="op-card"><div class="op-label">'+o.label+'</div><div class="op-bar"><div class="op-fill" style="width:'+pct+'%;background:'+color+'"></div></div><div class="op-nums" style="color:'+color+';font-weight:500">'+pct+'% <span style="font-weight:400;color:#888">('+o.sim+'/'+o.total+')</span></div></div>';}).join('')+'</div>';
+new Chart(document.getElementById('chartOp'),{type:'bar',data:{labels:opTypes.map(function(o){return o.label}),datasets:[{label:'SIM',data:opTypes.map(function(o){return o.sim}),backgroundColor:'#A32D2D',borderWidth:0},{label:'NÃO',data:opTypes.map(function(o){return o.total-o.sim}),backgroundColor:'#3B6D11',borderWidth:0}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,beginAtZero:true,ticks:{color:'#888'},grid:{color:'rgba(0,0,0,0.06)'}},y:{stacked:true,ticks:{color:'#888',font:{size:11}},grid:{display:false}}}}});
+
+renderTable();
+updateKpisNA();
+renderNA();
+</script>
+</body>
+</html>

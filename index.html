@@ -192,7 +192,7 @@ select,input[type=text]{font-size:13px;padding:4px 8px;border:0.5px solid #ddd;b
 <!-- NAO ATIVAR -->
 <div id="naoativar" class="section">
   <div class="kpi-grid">
-    <div class="kpi"><div class="val laranja">25</div><div class="lbl">Total não ativar</div></div>
+    <div class="kpi"><div class="val laranja" id="kpiNATotal">25</div><div class="lbl">Total não ativar</div></div>
     <div class="kpi"><div class="val" id="kpiSindico">0</div><div class="lbl">Síndico não quer I.A.</div></div>
     <div class="kpi"><div class="val" id="kpiApp">0</div><div class="lbl">Autorização pelo app</div></div>
     <div class="kpi"><div class="val" id="kpiCritico">0</div><div class="lbl">Condomínio crítico</div></div>
@@ -258,7 +258,7 @@ var SK_NA='dash_ia_na_v2';
 
 function loadEdits(){try{return JSON.parse(localStorage.getItem(SK_EDITS)||'{}')}catch(e){return{}}}
 function loadNA(){try{return JSON.parse(localStorage.getItem(SK_NA)||'{}')}catch(e){return{}}}
-function saveEdit(cond,field,val){var d=loadEdits();if(!d[cond])d[cond]={};d[cond][field]=val;localStorage.setItem(SK_EDITS,JSON.stringify(d));showSaved();updateKpisCad();}
+function saveEdit(cond,field,val){var d=loadEdits();if(!d[cond])d[cond]={};d[cond][field]=val;localStorage.setItem(SK_EDITS,JSON.stringify(d));showSaved();updateKpisCad();if(field==='config'){updateKpisNA();renderNA();}}
 function saveNA(cond,field,val){var d=loadNA();if(!d[cond])d[cond]={};d[cond][field]=val;localStorage.setItem(SK_NA,JSON.stringify(d));showSaved();updateKpisNA();}
 function showSaved(){var el=document.getElementById('saveStatus');el.textContent='✓ Salvo';setTimeout(function(){el.textContent=''},2000);}
 function getConfig(r){var d=loadEdits();return(d[r.cond]&&d[r.cond].config!==undefined)?d[r.cond].config:r.config;}
@@ -313,20 +313,29 @@ function updateKpisCad(){
   document.getElementById('kpiCancel').textContent=counts['CANCELADO'];
 }
 
+function getNaoAtivarAtual(){
+  return CADS.filter(function(r){return getConfig(r)==='NAO ATIVAR';});
+}
+
 function updateKpisNA(){
+  var lista=getNaoAtivarAtual();
   var s=0,a=0,c=0,sem=0;
-  NAO_ATIVAR.forEach(function(r){var v=getNAMotivo(r.cond);if(v==='sindico')s++;else if(v==='app')a++;else if(v==='critico')c++;else sem++;});
+  lista.forEach(function(r){var v=getNAMotivo(r.cond);if(v==='sindico')s++;else if(v==='app')a++;else if(v==='critico')c++;else sem++;});
+  var total=lista.length;
   document.getElementById('kpiSindico').textContent=s;
   document.getElementById('kpiApp').textContent=a;
   document.getElementById('kpiCritico').textContent=c;
   document.getElementById('kpiSem').textContent=sem;
+  if(document.getElementById('kpiNATotal'))document.getElementById('kpiNATotal').textContent=total;
+  // Atualiza contador da aba
+  document.querySelectorAll('.tab').forEach(function(t){if(t.textContent.indexOf('Não Ativar')>=0)t.textContent='Não Ativar ('+total+')';});
   if(naChart){naChart.data.datasets[0].data=[s,a,c,sem];naChart.update();}
 }
 
 function renderNA(){
   var fFil=document.getElementById('filtNAFilial').value;
   var fMot=document.getElementById('filtNAMotivo').value;
-  var data=NAO_ATIVAR.filter(function(r){
+  var data=getNaoAtivarAtual().filter(function(r){
     if(fFil&&r.filial!==fFil)return false;
     var v=getNAMotivo(r.cond);
     if(fMot==='sem'&&v!=='')return false;
